@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@media print {
+	body {
+		background: white !important;
+	}
+
+	aside,
+	header,
+	button,
+	nav,
+	input,
+	select,
+	textarea {
+		display: none !important;
+	}
+
+	.document-print,
+	.prescription-print {
+		display: block !important;
+		border: 0 !important;
+		box-shadow: none !important;
+	}
+}

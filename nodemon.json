@@ -1,0 +1,8 @@
+{
+  "exec": "node --loader ts-node/esm",
+  "ext": "ts",
+  "watch": ["src"],
+  "env": {
+    "TS_NODE_PROJECT": "tsconfig.server.json"
+  }
+}

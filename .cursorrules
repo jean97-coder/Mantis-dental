@@ -1,0 +1,24 @@
+# MANTIS DENTAL - Reglas de Arquitectura y Desarrollo
+
+## Stack Tecnológico
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Lucide Icons, UI components.
+- Backend & Base de Datos: Node.js / Express API, PostgreSQL local (`mantis_dental_db`), pgvector, Docker.
+- IA & Voz: Web Speech API, Agente AI Router (OpenAI / Anthropic / DeepSeek), Tool Calling.
+
+## Estructura de Módulos (Navegación Estricta)
+1. Dashboard
+2. Pacientes (Lista, Nuevo, Perfil Clínico 360°)
+3. Agenda (Calendario, Citas, Profesionales)
+4. Tratamientos (Catálogo, Activos, Pendientes, Historial)
+5. Presupuestos (Todos, Crear, Planes)
+6. Finanzas (Resumen, Pagos, Pendientes, Facturación)
+7. WhatsApp (Conversaciones, Bot AI)
+8. Mantis AI (Asistente, Voz, Acciones, Inteligencia)
+9. Reportes
+10. Inventario
+11. Configuración
+
+## Reglas de Código
+- TypeScript estricto sin tipo `any`.
+- Aislamiento Multi-tenant mediante columna `tenant_id` en todas las consultas.
+- Sistema de numeración dental internacional FDI (11-48 para permanentes, 51-85 para temporales).

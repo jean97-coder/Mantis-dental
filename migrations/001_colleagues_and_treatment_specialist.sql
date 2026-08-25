@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS colleagues (
+  id SERIAL PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  specialty VARCHAR(120) NOT NULL,
+  phone VARCHAR(50) NOT NULL DEFAULT '',
+  email VARCHAR(150) NOT NULL DEFAULT '',
+  professional_license VARCHAR(100) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE medical_records
+  ADD COLUMN IF NOT EXISTS colleague_id INTEGER REFERENCES colleagues(id) ON DELETE SET NULL;
+
+ALTER TABLE medical_records
+  ADD COLUMN IF NOT EXISTS session_number INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS total_sessions INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS progress_status VARCHAR(30) NOT NULL DEFAULT 'Planificado';
+
+CREATE INDEX IF NOT EXISTS medical_records_colleague_id_idx
+  ON medical_records (colleague_id);
+
+ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS name VARCHAR(180);
+ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS line_discount NUMERIC(12,2) NOT NULL DEFAULT 0;
