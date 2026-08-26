@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Stethoscope, Trash2, X } from 'lucide-react';
 
 export interface CatalogItem { id: number; name: string; description: string; price: number }
 interface Props { onSelect: (item: CatalogItem) => void }
@@ -11,6 +11,7 @@ export default function TreatmentCatalogPanel({ onSelect }: Props) {
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -27,7 +28,7 @@ export default function TreatmentCatalogPanel({ onSelect }: Props) {
     void load();
   }, []);
 
-  function reset() { setForm(blank); setEditingId(null); }
+  function reset() { setForm(blank); setEditingId(null); setIsFormVisible(false); }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError('');
     const price = Number(form.price);
@@ -42,10 +43,140 @@ export default function TreatmentCatalogPanel({ onSelect }: Props) {
     } catch (saveError) { console.error('Error guardando ítem del catálogo', saveError); setError(saveError instanceof Error ? saveError.message : 'Error al guardar ítem'); }
   }
   async function remove(item: CatalogItem) {
-    if (!window.confirm(`¿Eliminar ${item.name}?`)) return;
+    if (!window.confirm(`¿Eliminar ${item.name} del catálogo?`)) return;
     try { const response = await fetch(`${API}/${item.id}`, { method: 'DELETE' }); if (!response.ok) throw new Error('No se pudo eliminar el ítem'); setItems((current) => current.filter((entry) => entry.id !== item.id)); }
     catch (deleteError) { console.error('Error eliminando ítem del catálogo', deleteError); setError(deleteError instanceof Error ? deleteError.message : 'Error al eliminar ítem'); }
   }
 
-  return <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-slate-900">Catálogo rápido</h3><p className="mt-1 text-xs text-slate-500">Haz clic en un tratamiento para añadirlo al desglose.</p></div><button type="button" onClick={reset} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white"><Plus className="h-4 w-4" />Nuevo ítem</button></div><form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_8rem_auto]"><input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre" className="min-w-0 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><input required value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descripción" className="min-w-0 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><input required min="0" step="0.01" type="number" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} placeholder="Costo $" className="min-w-0 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><button type="submit" className="rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-bold text-white">{editingId ? 'Actualizar' : 'Guardar'}</button></form>{error && <p className="mt-3 text-xs font-semibold text-rose-600">{error}</p>}<div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{items.map((item) => <div key={item.id} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3"><button type="button" onClick={() => onSelect(item)} className="block w-full min-w-0 text-left"><strong className="block truncate text-sm text-slate-800">{item.name}</strong><span className="mt-1 block truncate text-xs text-slate-500">{item.description}</span><span className="mt-2 block text-sm font-black text-emerald-700">${item.price.toFixed(2)}</span></button><div className="mt-2 flex gap-3 border-t border-slate-200 pt-2"><button type="button" onClick={() => { setEditingId(item.id); setForm({ name: item.name, description: item.description, price: String(item.price) }); }} className="inline-flex items-center gap-1 text-xs font-bold text-slate-500"><Pencil className="h-3 w-3" />Editar</button><button type="button" onClick={() => void remove(item)} className="inline-flex items-center gap-1 text-xs font-bold text-rose-600"><Trash2 className="h-3 w-3" />Eliminar</button></div></div>)}</div>{items.length === 0 && <p className="mt-4 text-xs text-slate-500">No hay tratamientos personalizados guardados.</p>}</section>;
+  return (
+    <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-teal-600" />
+            Catálogo de Tratamientos Predefinidos
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 font-medium">Haz clic en cualquier paquete para cotizarlo directamente al paciente.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => { reset(); setIsFormVisible(!isFormVisible); }}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 transition-colors cursor-pointer"
+        >
+          {isFormVisible ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+          <span>{isFormVisible ? 'Cerrar formulario' : 'Nuevo tratamiento'}</span>
+        </button>
+      </div>
+
+      {isFormVisible && (
+        <form onSubmit={save} className="rounded-2xl border border-teal-200/80 bg-teal-50/40 p-4 space-y-3 animate-fade-in-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-teal-900">
+              {editingId ? 'Editar tratamiento del catálogo' : 'Agregar nuevo tratamiento al catálogo'}
+            </span>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_8rem_auto]">
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+              placeholder="Nombre del tratamiento"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-teal-500"
+            />
+            <input
+              required
+              value={form.description}
+              onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))}
+              placeholder="Descripción / Piezas incluidas"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-teal-500"
+            />
+            <input
+              required
+              min="0"
+              step="0.01"
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm((c) => ({ ...c, price: e.target.value }))}
+              placeholder="Precio ($)"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-teal-500"
+            />
+            <button
+              type="submit"
+              className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition-colors"
+            >
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </button>
+          </div>
+          {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
+        </form>
+      )}
+
+      {/* Grid de Tratamientos */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          >
+            <button
+              type="button"
+              onClick={() => onSelect(item)}
+              className="block w-full text-left cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-bold text-xs text-slate-900 group-hover:text-teal-700 transition-colors line-clamp-1">
+                  {item.name}
+                </h4>
+                <span className="shrink-0 text-xs font-black text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
+                  ${item.price.toFixed(2)}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">
+                {item.description}
+              </p>
+            </button>
+
+            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+              <span className="text-[10px] font-semibold text-slate-400">Clic para cotizar</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingId(item.id);
+                    setForm({ name: item.name, description: item.description, price: String(item.price) });
+                    setIsFormVisible(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-teal-600 transition-colors"
+                  title="Editar tratamiento"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void remove(item);
+                  }}
+                  className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                  title="Eliminar tratamiento"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {items.length === 0 && (
+        <p className="py-6 text-center text-xs font-medium text-slate-400">
+          No hay paquetes ni tratamientos guardados en el catálogo.
+        </p>
+      )}
+    </section>
+  );
 }
+

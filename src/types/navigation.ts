@@ -9,26 +9,28 @@ export type ModuleId =
   | 'mantis-ai'
   | 'reportes'
   | 'inventario'
-  | 'configuracion';
+  | 'configuracion'
+  | 'accesos';
 
 export interface NavItem {
   id: ModuleId;
   name: string;
-  label?: string;
-  icon?: string;
+  category: 'PRINCIPAL' | 'ATENCIÓN' | 'CLÍNICA' | 'GESTIÓN' | 'COMUNICACIÓN' | 'INTELIGENCIA' | 'SISTEMA';
+  permission?: string;
   badge?: string;
 }
 
 export const NAVIGATION_MODULES: NavItem[] = [
-  { id: 'dashboard', name: 'Dashboard' },
-  { id: 'pacientes', name: 'Pacientes' },
-  { id: 'agenda', name: 'Agenda' },
-  { id: 'presupuestos', name: 'Presupuestos' },
-  { id: 'colegas', name: 'Colegas' },
-  { id: 'finanzas', name: 'Finanzas' },
-  { id: 'whatsapp', name: 'WhatsApp' },
-  { id: 'mantis-ai', name: 'Mantis AI' },
-  { id: 'reportes', name: 'Reportes' },
-  { id: 'inventario', name: 'Inventario' },
-  { id: 'configuracion', name: 'Configuración' },
+  { id: 'dashboard', name: 'Dashboard', category: 'PRINCIPAL' },
+  { id: 'pacientes', name: 'Pacientes', category: 'ATENCIÓN', permission: 'pacientes' },
+  { id: 'agenda', name: 'Agenda', category: 'ATENCIÓN', permission: 'agenda' },
+  { id: 'presupuestos', name: 'Presupuestos', category: 'ATENCIÓN', permission: 'presupuestos' },
+  { id: 'colegas', name: 'Colegas y Especialistas', category: 'CLÍNICA', permission: 'colegas' },
+  { id: 'reportes', name: 'Historial Clínico', category: 'CLÍNICA', permission: 'reportes' },
+  { id: 'finanzas', name: 'Finanzas', category: 'GESTIÓN', permission: 'finanzas' },
+  { id: 'inventario', name: 'Inventario', category: 'GESTIÓN', permission: 'inventario' },
+  { id: 'whatsapp', name: 'WhatsApp', category: 'COMUNICACIÓN', permission: 'whatsapp' },
+  { id: 'mantis-ai', name: 'Mantis AI', category: 'INTELIGENCIA', badge: 'PRO' },
+  { id: 'configuracion', name: 'Configuración', category: 'SISTEMA', permission: 'configuracion' },
+  { id: 'accesos', name: 'Gestión de accesos', category: 'SISTEMA', permission: 'admin' },
 ];

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
+  <title id="title">Mantis</title>
+  <desc id="desc">Isotipo estilizado de Mantis Odonto System</desc>
+  <defs>
+    <linearGradient id="green" x1="35" y1="30" x2="180" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#61e6a2"/><stop offset=".48" stop-color="#12bd70"/><stop offset="1" stop-color="#008b62"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="40" y1="30" x2="150" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b8d0dc"/><stop offset=".3" stop-color="#5d8194"/><stop offset="1" stop-color="#183847"/>
+    </linearGradient>
+  </defs>
+  <path fill="none" stroke="url(#navy)" stroke-linecap="round" stroke-width="12" d="M83 78C54 53 29 62 35 103c3 19 13 37 27 53"/>
+  <path fill="none" stroke="url(#green)" stroke-linecap="round" stroke-width="7" d="M106 102C101 58 83 25 54 20M114 102c8-43 28-75 58-82"/>
+  <path fill="url(#green)" d="m81 78 25 26 22-28 24 15-20 39-26-26-28 27-24-40 20-12 22 30 14-18-16-15z"/>
+  <path fill="#0b9160" d="m75 123 34 37 37-37-10 44-27 32-27-32z"/>
+  <path fill="none" stroke="url(#navy)" stroke-linecap="round" stroke-width="9" d="M92 157c-2 30 2 47 15 48 12 1 11-29 22-29 11 0 12 30 23 28 11-2 12-20 10-48"/>
+  <path fill="url(#green)" d="M81 52c-17-11-28 0-22 16 4 11 14 17 28 20l7-19c-2-7-6-13-13-17zm58 0c17-11 28 0 22 16-4 11-14 17-28 20l-7-19c2-7 6-13 13-17z"/>
+  <path fill="#70ebb1" d="M180 34c5 9 8 11 18 14-10 2-13 5-18 15-3-10-6-13-16-15 10-3 13-5 16-14z"/>
+</svg>

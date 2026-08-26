@@ -1,14 +1,15 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  BarChart3,
   Bot,
   CalendarDays,
   CircleDollarSign,
+  FileText,
   LayoutDashboard,
   MessageCircle,
   Package,
   Receipt,
   Settings,
+  ShieldCheck,
   Users,
   UserRoundCog,
 } from 'lucide-react'
@@ -20,12 +21,14 @@ export const MODULE_ICONS: Record<ModuleId, LucideIcon> = {
   agenda: CalendarDays,
   presupuestos: Receipt,
   colegas: UserRoundCog,
+  reportes: FileText,
   finanzas: CircleDollarSign,
+  inventario: Package,
   whatsapp: MessageCircle,
   'mantis-ai': Bot,
-  reportes: BarChart3,
-  inventario: Package,
   configuracion: Settings,
+  accesos: ShieldCheck,
 }
 
-export const MANTIS_AI_BADGE = '3'
+export const MANTIS_AI_BADGE = 'IA'
+
