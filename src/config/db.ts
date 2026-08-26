@@ -4,11 +4,13 @@ import type { PoolClient } from 'pg';
 
 const { Pool } = pg;
 
-// Conexión estándar usando el connectionString oficial de Supabase
+// Blindamos la URL para asegurar compatibilidad total en la nube de Render
+const connectionString = process.env.DATABASE_URL;
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: { rejectUnauthorized: false },
-  family: 4,
+  family: 4, // Fuerza estrictamente el uso de IPv4 a nivel de socket
 } as any);
 
 const defaultDocumentTemplates = [
