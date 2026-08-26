@@ -1,11 +1,14 @@
 import 'dotenv/config';
+import dns from 'node:dns';
 import pg from 'pg';
 import type { PoolClient } from 'pg';
 import { URL } from 'url';
 
+// Fuerza de manera absoluta que Node.js resuelva primero las IPs de tipo IPv4
+dns.setDefaultResultOrder('ipv4first');
+
 const { Pool } = pg;
 
-// Parseamos la URL de entorno para separar los componentes de forma segura
 let poolConfig: any = {
   ssl: { rejectUnauthorized: false },
   family: 4,
