@@ -1,42 +1,14 @@
 import 'dotenv/config';
-import dns from 'node:dns/promises';
 import pg from 'pg';
 import type { PoolClient } from 'pg';
-import { URL } from 'url';
 
 const { Pool } = pg;
 
-async function createSafePool() {
-  let poolConfig: any = {
-    ssl: { rejectUnauthorized: false },
-  };
-
-  if (process.env.DATABASE_URL) {
-    try {
-      const connectionUrl = new URL(process.env.DATABASE_URL);
-      const hostname = connectionUrl.hostname;
-      
-      console.log(`Resolviendo IP IPv4 para el host: ${hostname}...`);
-      // Forzamos una búsqueda DNS estrictamente IPv4 para obtener una IP numérica válida
-      const lookup = await dns.lookup(hostname, { family: 4 });
-      console.log(`IP IPv4 resuelta con éxito: ${lookup.address}`);
-
-      poolConfig.user = decodeURIComponent(connectionUrl.username);
-      poolConfig.password = decodeURIComponent(connectionUrl.password);
-      poolConfig.host = lookup.address; // Usamos la IP numérica directa para evitar el ENETUNREACH
-      poolConfig.database = connectionUrl.pathname.slice(1);
-      poolConfig.port = Number(connectionUrl.port || 6543);
-    } catch (e) {
-      console.error('Error en la resolución DNS o parseo de DATABASE_URL:', e);
-      // Fallback por si acaso a la configuración por defecto
-      poolConfig.connectionString = process.env.DATABASE_URL;
-    }
-  }
-
-  return new Pool(poolConfig);
-}
-
-export const pool = await createSafePool();
+// Conexión limpia y directa compatible con Neon (IPv4 nativo)
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 const defaultDocumentTemplates = [
   {
@@ -61,7 +33,7 @@ const defaultDocumentTemplates = [
     name: 'Informe Odontológico',
     description: 'Informe clínico resumido del tratamiento y evaluación.',
     content:
-      'INFORME ODONTOLÓGICO\n\nPaciente: {{nombre}}\nFecha: {{fecha}} \n\nSe realizó la evaluación clínica correspondiente y se observa la necesidad de continuar con el plan de tratamiento indicado.\n\nSe recomienda seguimiento y control en citas programadas.\n\nAtentamente,\nMantis Dental',
+      'INFORME ODONTOLÓGICO\n\nPaciente: {{nombre}}\nFecha: {{fecha}}\n\nSe realizó la evaluación clínica correspondiente y se observa la necesidad de continuar con el plan de tratamiento indicado.\n\nSe recomienda seguimiento y control en citas programadas.\n\nAtentamente,\nMantis Dental',
   },
 ];
 
