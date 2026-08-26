@@ -121,8 +121,8 @@ const emptyMedicine: PrescriptionMedicine = {
   contraindications: '',
 };
 
-const API = 'http://localhost:4000/api/clinical-records';
-const TEMPLATES_API = 'http://localhost:4000/api/templates/document-templates';
+const API = 'http://localhost:4001/api/clinical-records';
+const TEMPLATES_API = 'http://localhost:4001/api/templates/document-templates';
 
 export default function ClinicalHistoryModule({ patient, onBack }: { patient: Patient; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>('ficha');
@@ -986,7 +986,7 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
                   <figure key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     {item.image_url.startsWith('data:') || item.image_url.startsWith('/uploads/') ? (
                       <img
-                        src={item.image_url.startsWith('/uploads/') ? `http://localhost:4000${item.image_url}` : item.image_url}
+                        src={item.image_url.startsWith('/uploads/') ? `http://localhost:4001${item.image_url}` : item.image_url}
                         alt={item.title}
                         className="h-40 w-full object-cover"
                       />

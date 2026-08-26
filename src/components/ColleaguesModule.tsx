@@ -11,7 +11,7 @@ interface Colleague {
 }
 
 type ColleagueForm = Omit<Colleague, 'id'>;
-const API = 'http://localhost:4000/api/colleagues';
+const API = 'http://localhost:4001/api/colleagues';
 const emptyForm: ColleagueForm = { full_name: '', specialty: '', phone: '', email: '', professional_license: '' };
 
 export default function ColleaguesModule() {

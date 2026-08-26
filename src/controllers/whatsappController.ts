@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { pool } from '../config/db.js';
+import { GoogleGenAI } from '@google/genai';
 
 type Sender = 'user' | 'bot' | 'patient';
 interface MessageInput { patient_phone: string; patient_name?: string; message: string; sender?: Sender }
@@ -52,22 +53,26 @@ async function freeSlots() {
 
 async function assistantReply(phone: string, text: string) {
   const slots = await freeSlots();
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey) {
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: process.env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2, messages: [
-          { role: 'system', content: `Eres la recepcionista virtual de Mantis Dental. Responde en español, con amabilidad y brevedad. Horarios disponibles reales: ${slots.map((slot) => new Date(slot).toLocaleString('es-ES')).join(', ') || 'No hay horarios próximos'}. No inventes disponibilidad.` },
-          { role: 'user', content: `Paciente ${phone}: ${text}` },
-        ] }),
+      const historyResult = await pool.query<{ sender: Sender; message: string }>(
+        `SELECT sender, message FROM whatsapp_messages WHERE patient_phone = $1 ORDER BY timestamp DESC LIMIT 20`,
+        [phone],
+      );
+      const conversation = historyResult.rows.reverse().map((message) => `${message.sender}: ${message.message}`).join('\n');
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        contents: `Historial reciente:\n${conversation}\n\nPaciente: ${text}`,
+        config: {
+          temperature: 0.2,
+          systemInstruction: `Eres la recepcionista virtual de Mantis Dental. Responde siempre en español, de forma amable, profesional y breve. Ayuda a consultar y solicitar citas. Los horarios disponibles reales son: ${slots.map((slot) => new Date(slot).toLocaleString('es-ES')).join(', ') || 'No hay horarios próximos'}. No inventes horarios ni confirmes una cita si el paciente no proporciona una fecha y hora concreta. Si el paciente quiere confirmar, pídele el formato AAAA-MM-DD HH:MM.`,
+        },
       });
-      if (response.ok) {
-        const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-        const content = data.choices?.[0]?.message?.content?.trim();
-        if (content) return content;
-      }
-    } catch (error) { console.error('OpenAI WhatsApp request failed', error); }
+      const content = result.text?.trim();
+      if (content) return content;
+    } catch (error) { console.error('Gemini WhatsApp request failed', error); }
   }
   if (/hola|buenas|información/i.test(text)) return 'Hola, soy el asistente de Mantis Dental. Puedo ayudarte a reservar una cita. Escribe "horarios" para consultar disponibilidad.';
   if (/horario|disponib|cita|agenda/i.test(text)) return slots.length ? `Estos son los próximos horarios disponibles: ${slots.map((slot) => new Date(slot).toLocaleString('es-ES')).join(' | ')}. Indícame cuál prefieres.` : 'En este momento no hay horarios disponibles en los próximos 14 días.';
@@ -123,15 +128,12 @@ export async function receiveWebhook(request: Request, response: Response): Prom
 }
 
 export function verifyWebhook(request: Request, response: Response): void {
-  const mode = request.query['hub.mode']; 
-  const token = request.query['hub.verify_token']; 
+  const mode = request.query['hub.mode'];
+  const token = request.query['hub.verify_token'];
   const challenge = request.query['hub.challenge'];
-  
-  // Token fijo configurado directamente aquí
-  const VERIFY_TOKEN = 'mantis_secret_123';
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) { 
-    response.status(200).send(challenge); 
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    response.status(200).send(challenge);
     return; 
   }
   response.sendStatus(403);

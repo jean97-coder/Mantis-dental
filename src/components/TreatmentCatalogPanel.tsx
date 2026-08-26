@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 export interface CatalogItem { id: number; name: string; description: string; price: number }
 interface Props { onSelect: (item: CatalogItem) => void }
-const API = 'http://localhost:4000/api/templates/treatment-packages';
+const API = 'http://localhost:4001/api/templates/treatment-packages';
 const blank = { name: '', description: '', price: '' };
 
 export default function TreatmentCatalogPanel({ onSelect }: Props) {

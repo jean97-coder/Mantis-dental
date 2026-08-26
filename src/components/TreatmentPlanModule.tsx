@@ -5,8 +5,8 @@ interface Colleague { id: number; full_name: string; specialty: string }
 interface Treatment { id: number; tooth_number: number; diagnosis: string; treatment_plan: string; notes: string | null; created_at: string; colleague_name: string | null; colleague_specialty: string | null; session_number: number; total_sessions: number; progress_status: string }
 interface TreatmentForm { tooth_number: string; diagnosis: string; treatment_plan: string; notes: string; colleague_id: string; session_number: string; total_sessions: string; progress_status: string }
 
-const RECORDS_URL = 'http://localhost:4000/api/medical-records';
-const COLLEAGUES_URL = 'http://localhost:4000/api/colleagues';
+const RECORDS_URL = 'http://localhost:4001/api/medical-records';
+const COLLEAGUES_URL = 'http://localhost:4001/api/colleagues';
 const emptyForm: TreatmentForm = { tooth_number: '', diagnosis: '', treatment_plan: '', notes: '', colleague_id: '', session_number: '1', total_sessions: '1', progress_status: 'Planificado' };
 
 export default function TreatmentPlanModule({ patientId }: { patientId: number }) {

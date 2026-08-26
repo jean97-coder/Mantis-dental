@@ -8,7 +8,7 @@ interface DashboardStats {
   budgets: { revenue: number };
 }
 
-const REPORTS_URL = 'http://localhost:4000/api/reports';
+const REPORTS_URL = 'http://localhost:4001/api/reports';
 
 export default function ReportsModule() {
   const [stats, setStats] = useState<DashboardStats | null>(null);

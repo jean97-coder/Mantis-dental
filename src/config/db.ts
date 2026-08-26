@@ -4,10 +4,12 @@ import type { PoolClient } from 'pg';
 
 const { Pool } = pg;
 
-// Conexión limpia y directa compatible con Neon (IPv4 nativo)
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT ?? 5432),
 });
 
 const defaultDocumentTemplates = [
@@ -27,7 +29,7 @@ const defaultDocumentTemplates = [
     name: 'Permiso Médico',
     description: 'Permiso médico para ausencia laboral o académica.',
     content:
-      'PERMISO MÉDICO\n\nSe autoriza a {{nombre}} la licencia por motivos odontológicos el día {{fecha}}, por un período de {{dias}} días.\n\nSe entrega este documento con fines de justificación.\n\nAtentamente,\nMantis Dental',
+      'PERMISO MÉDICO\n\nSe autoriza a {{nombre}} la licencia por motivos odontológicos el día {{fecha}}, por un período de {{dias}} días.\n\nEste documento se entrega con fines de justificación.\n\nAtentamente,\nMantis Dental',
   },
   {
     name: 'Informe Odontológico',

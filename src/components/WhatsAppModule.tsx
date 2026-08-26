@@ -3,7 +3,7 @@ import { Bot, Check, MessageCircle, RefreshCw, Send, UserRound } from 'lucide-re
 
 interface Chat { patient_phone: string; patient_name: string; message: string; sender: 'user' | 'bot' | 'patient'; timestamp: string }
 interface Message extends Chat { id: number }
-const API = 'http://localhost:4000/api/whatsapp';
+const API = 'http://localhost:4001/api/whatsapp';
 
 export default function WhatsAppModule() {
   const [chats, setChats] = useState<Chat[]>([]);

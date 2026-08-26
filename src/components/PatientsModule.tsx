@@ -22,7 +22,7 @@ interface PatientForm {
   medical_history: string;
 }
 
-const API_URL = 'http://localhost:4000/api/patients';
+const API_URL = 'http://localhost:4001/api/patients';
 
 const emptyForm: PatientForm = {
   name: '',

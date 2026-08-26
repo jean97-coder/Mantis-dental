@@ -7,9 +7,9 @@ interface FormItem { catalog_id: string; name: string; description: string; quan
 interface Budget { id: number; patient_name: string; notes: string | null; total: number; created_at: string; items: Array<{ name?: string; description: string; quantity: number; unit_price: number; line_discount?: number }> }
 type DiscountType = 'none' | 'fixed' | 'percent';
 
-const BUDGETS_API = 'http://localhost:4000/api/budgets';
-const PATIENTS_API = 'http://localhost:4000/api/patients';
-const CATALOG_API = 'http://localhost:4000/api/templates/treatment-packages';
+const BUDGETS_API = 'http://localhost:4001/api/budgets';
+const PATIENTS_API = 'http://localhost:4001/api/patients';
+const CATALOG_API = 'http://localhost:4001/api/templates/treatment-packages';
 const emptyItem: FormItem = { catalog_id: '', name: '', description: '', quantity: '1', unit_price: '0', line_discount: '0' };
 
 const numberValue = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;

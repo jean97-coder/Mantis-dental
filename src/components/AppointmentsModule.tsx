@@ -36,8 +36,8 @@ interface AppointmentForm {
   reason: string;
 }
 
-const APPOINTMENTS_URL = 'http://localhost:4000/api/appointments';
-const PATIENTS_URL = 'http://localhost:4000/api/patients';
+const APPOINTMENTS_URL = 'http://localhost:4001/api/appointments';
+const PATIENTS_URL = 'http://localhost:4001/api/patients';
 
 const emptyForm: AppointmentForm = {
   patient_id: '',

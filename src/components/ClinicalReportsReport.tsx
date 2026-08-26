@@ -6,7 +6,7 @@ interface Note { id: number; note: string; created_at: string; }
 interface Diagnosis { id: number; cie10_code: string; description: string; created_at: string; }
 interface RecordItem { id: number; tooth_number: number; diagnosis: string; treatment_plan: string; created_at: string; }
 
-const API = 'http://localhost:4000/api';
+const API = 'http://localhost:4001/api';
 
 export default function ClinicalReportsReport() {
   const [patients, setPatients] = useState<Patient[]>([]);

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { FilePlus, Package, Save } from 'lucide-react';
 
-const API = 'http://localhost:4000/api/templates';
+  const API = 'http://localhost:4001/api/templates';
 
 export default function ConfigurationModule() {
   const [template, setTemplate] = useState({ name: '', description: '', content: '' });
