@@ -4,13 +4,13 @@ import type { PoolClient } from 'pg';
 
 const { Pool } = pg;
 
-// Configuración adaptada para la nube usando type assertion (as any) para evitar el aviso de TypeScript
+// Configuración adaptada para la nube forzando explícitamente IPv4
 export const pool = new Pool(
   (process.env.DATABASE_URL
     ? {
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
-        family: 4,
+        family: 4, // Fuerza IPv4 a nivel de socket
       }
     : {
         user: process.env.DB_USER,
