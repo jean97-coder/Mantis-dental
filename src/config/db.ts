@@ -1,17 +1,30 @@
 import 'dotenv/config';
 import pg from 'pg';
 import type { PoolClient } from 'pg';
+import { URL } from 'url';
 
 const { Pool } = pg;
 
-// Blindamos la URL para asegurar compatibilidad total en la nube de Render
-const connectionString = process.env.DATABASE_URL;
-
-export const pool = new Pool({
-  connectionString,
+// Parseamos la URL de entorno para separar los componentes de forma segura
+let poolConfig: any = {
   ssl: { rejectUnauthorized: false },
-  family: 4, // Fuerza estrictamente el uso de IPv4 a nivel de socket
-} as any);
+  family: 4,
+};
+
+if (process.env.DATABASE_URL) {
+  try {
+    const connectionUrl = new URL(process.env.DATABASE_URL);
+    poolConfig.user = decodeURIComponent(connectionUrl.username);
+    poolConfig.password = decodeURIComponent(connectionUrl.password);
+    poolConfig.host = connectionUrl.hostname;
+    poolConfig.database = connectionUrl.pathname.slice(1);
+    poolConfig.port = Number(connectionUrl.port || 6543);
+  } catch (e) {
+    console.error('Error parseando DATABASE_URL:', e);
+  }
+}
+
+export const pool = new Pool(poolConfig);
 
 const defaultDocumentTemplates = [
   {
@@ -30,7 +43,7 @@ const defaultDocumentTemplates = [
     name: 'Permiso Médico',
     description: 'Permiso médico para ausencia laboral o académica.',
     content:
-      'PERMISO MÉDICO\n\nSe autoriza a {{nombre}} la licencia por motivos odontológicos el día {{fecha}}, por un período de {{dias}} días.\n\nEste documento se entrega con fines de justificación.\n\nAtentamente,\nMantis Dental',
+      'PERMISO MÉDICO\n\nSe autoriza a {{nombre}} la licencia por motivos odontológicos el día {{fecha}}, por un período de {{dias}} días.\n\nSe entrega este documento con fines de justificación.\n\nAtentamente,\nMantis Dental',
   },
   {
     name: 'Informe Odontológico',
