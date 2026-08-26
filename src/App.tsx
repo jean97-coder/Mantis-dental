@@ -9,6 +9,8 @@ import ClinicalReportsReport from './components/ClinicalReportsReport';
 import ConfigurationModule from './components/ConfigurationModule';
 import ColleaguesModule from './components/ColleaguesModule';
 import WhatsAppModule from './components/WhatsAppModule';
+import LoginScreen from './components/LoginScreen';
+import AccessManagementModule from './components/AccessManagementModule';
 
 export type ModuleId = 
   | 'dashboard'
@@ -21,24 +23,32 @@ export type ModuleId =
   | 'mantis-ai'
   | 'reportes'
   | 'inventario'
-  | 'configuracion';
+  | 'configuracion'
+  | 'accesos';
+type Session = { token: string; user: { id: number; email: string; name: string; role: 'admin' | 'odontologo'; permissions: string[] } };
 
 export function App() {
   const [currentModule, setCurrentModule] = useState<ModuleId>('dashboard');
+  const [session, setSession] = useState<Session | null>(() => {
+    try { return JSON.parse(localStorage.getItem('mantis-session') || 'null') as Session | null; } catch { return null; }
+  });
 
-  const menuItems: { id: ModuleId; label: string }[] = [
+  const menuItems: Array<{ id: ModuleId; label: string; permission?: string }> = [
     { id: 'dashboard', label: '🏠 Dashboard' },
-    { id: 'pacientes', label: '👥 Pacientes' },
-    { id: 'agenda', label: '📅 Agenda' },
-    { id: 'presupuestos', label: '💰 Presupuestos' },
-    { id: 'colegas', label: '🩺 Colegas' },
-    { id: 'finanzas', label: '💵 Finanzas' },
-    { id: 'whatsapp', label: '💬 WhatsApp' },
+    { id: 'pacientes', label: '👥 Pacientes', permission: 'pacientes' },
+    { id: 'agenda', label: '📅 Agenda', permission: 'agenda' },
+    { id: 'presupuestos', label: '💰 Presupuestos', permission: 'presupuestos' },
+    { id: 'colegas', label: '🩺 Colegas', permission: 'colegas' },
+    { id: 'finanzas', label: '💵 Finanzas', permission: 'finanzas' },
+    { id: 'whatsapp', label: '💬 WhatsApp', permission: 'whatsapp' },
     { id: 'mantis-ai', label: '🤖 Mantis AI' },
-    { id: 'reportes', label: '📊 Reportes' },
-    { id: 'inventario', label: '📦 Inventario' },
-    { id: 'configuracion', label: '⚙️ Configuración' },
+    { id: 'reportes', label: '📊 Reportes', permission: 'reportes' },
+    { id: 'inventario', label: '📦 Inventario', permission: 'inventario' },
+    { id: 'configuracion', label: '⚙️ Configuración', permission: 'configuracion' },
   ];
+
+  if (!session) return <LoginScreen onLogin={setSession} />;
+  const visibleItems = menuItems.filter((item) => session.user.role === 'admin' || !item.permission || session.user.permissions.includes(item.permission));
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-800">
@@ -53,7 +63,7 @@ export function App() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setCurrentModule(item.id)}
@@ -66,10 +76,12 @@ export function App() {
               {item.label}
             </button>
           ))}
+          {session.user.role === 'admin' && <button onClick={() => setCurrentModule('accesos')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${currentModule === 'accesos' ? 'bg-teal-600 text-white font-bold shadow-md' : 'hover:bg-slate-800 text-slate-400'}`}>🔐 Gestión de accesos</button>}
         </nav>
 
         <div className="pt-4 border-t border-slate-800 text-xs text-slate-500">
-          Dr. Juan Pérez (Odontólogo)
+          <div>{session.user.name} ({session.user.role})</div>
+          <button type="button" onClick={() => { localStorage.removeItem('mantis-session'); setSession(null); }} className="mt-2 text-teal-400 hover:text-white">Cerrar sesión</button>
         </div>
       </aside>
 
@@ -96,6 +108,8 @@ export function App() {
           {currentModule === 'colegas' && <ColleaguesModule />}
           {currentModule === 'whatsapp' && <WhatsAppModule />}
 
+          {currentModule === 'accesos' && <AccessManagementModule token={session.token} />}
+
 
           {currentModule === 'finanzas' && <FinanzasModule />}
 
@@ -114,7 +128,8 @@ export function App() {
            currentModule !== 'finanzas' &&
            currentModule !== 'inventario' &&
            currentModule !== 'reportes' &&
-           currentModule !== 'configuracion' && (
+           currentModule !== 'configuracion' &&
+           currentModule !== 'accesos' && (
             <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center max-w-xl mx-auto">
               <h3 className="text-lg font-bold text-slate-800">Módulo: {currentModule.toUpperCase()}</h3>
               <p className="text-xs text-slate-500 mt-2">Estructura vinculada a la base de datos PostgreSQL.</p>

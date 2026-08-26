@@ -15,9 +15,12 @@ import {
   getImages,
   getNotes,
   getOdontogram,
+  getOdontogramHistory,
+  getHealthAssessment,
   getPrescriptions,
   saveHistorySheet,
   saveOdontogram,
+  saveHealthAssessment,
 } from '../controllers/clinicalRecordController.js';
 
 const router = Router();
@@ -25,6 +28,9 @@ router.get('/patient/:patientId/history-sheet', getHistorySheet);
 router.put('/patient/:patientId/history-sheet', saveHistorySheet);
 router.get('/patient/:patientId/odontogram', getOdontogram);
 router.put('/patient/:patientId/odontogram', saveOdontogram);
+router.get('/patient/:patientId/odontogram/history', getOdontogramHistory);
+router.get('/patient/:patientId/health-assessment', getHealthAssessment);
+router.put('/patient/:patientId/health-assessment', saveHealthAssessment);
 router.get('/patient/:patientId/notes', getNotes);
 router.post('/patient/:patientId/notes', createNote);
 router.delete('/notes/:id', deleteClinicalRecord);

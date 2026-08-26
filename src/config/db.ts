@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import type { PoolClient } from 'pg';
+import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
@@ -56,6 +57,20 @@ export async function initializeDatabase(): Promise<void> {
       address TEXT DEFAULT '',
       medical_history TEXT DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(180) NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      name VARCHAR(150) NOT NULL,
+      role VARCHAR(30) NOT NULL CHECK (role IN ('admin', 'odontologo')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS user_module_permissions (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      module_id VARCHAR(60) NOT NULL,
+      PRIMARY KEY (user_id, module_id)
     );
 
     CREATE TABLE IF NOT EXISTS colleagues (
@@ -142,6 +157,23 @@ export async function initializeDatabase(): Promise<void> {
     ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS total_sessions INTEGER NOT NULL DEFAULT 1 CHECK (total_sessions > 0);
     ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS progress_status VARCHAR(30) NOT NULL DEFAULT 'Planificado';
 
+    CREATE TABLE IF NOT EXISTS odontogram_history (
+      id SERIAL PRIMARY KEY,
+      patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      tooth_number INTEGER NOT NULL,
+      snapshot JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS oral_health_assessments (
+      id SERIAL PRIMARY KEY,
+      patient_id INTEGER NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+      hygiene VARCHAR(40) NOT NULL DEFAULT '',
+      periodontal VARCHAR(40) NOT NULL DEFAULT '',
+      malocclusion VARCHAR(40) NOT NULL DEFAULT '',
+      fluorosis VARCHAR(40) NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS medical_history_sheets (
       id SERIAL PRIMARY KEY, patient_id INTEGER NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
       establishment VARCHAR(180) NOT NULL DEFAULT 'Mantis Dental', consultation_reason TEXT DEFAULT '', current_illness TEXT DEFAULT '',
@@ -215,6 +247,13 @@ export async function initializeDatabase(): Promise<void> {
       defaultDocumentTemplates[3].description,
       defaultDocumentTemplates[3].content,
     ]);
+
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_INITIAL_PASSWORD || 'MantisAdmin123!', 12);
+    await client.query(
+      `INSERT INTO users (email, password_hash, name, role)
+       VALUES ($1, $2, $3, 'admin') ON CONFLICT (email) DO NOTHING`,
+      [process.env.ADMIN_INITIAL_EMAIL || 'admin@mantisdental.local', adminPassword, 'Administrador Mantis Dental'],
+    );
 
     await client.query('COMMIT');
     console.log('Database schema verified');

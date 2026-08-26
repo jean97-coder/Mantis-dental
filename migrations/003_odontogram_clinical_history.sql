@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS odontogram_history (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  tooth_number INTEGER NOT NULL,
+  snapshot JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS oral_health_assessments (
+  id SERIAL PRIMARY KEY,
+  patient_id INTEGER NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+  hygiene VARCHAR(40) NOT NULL DEFAULT '',
+  periodontal VARCHAR(40) NOT NULL DEFAULT '',
+  malocclusion VARCHAR(40) NOT NULL DEFAULT '',
+  fluorosis VARCHAR(40) NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

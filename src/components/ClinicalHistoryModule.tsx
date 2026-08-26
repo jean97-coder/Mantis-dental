@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Activity, FileText, ImagePlus, Pill, Printer, Search, ShieldAlert, Stethoscope, Trash2 } from 'lucide-react';
 import TreatmentPlanModule from './TreatmentPlanModule';
+import DentalToothSvg, { toothKind, type ToothSurface } from './DentalToothSvg';
 
 interface Patient {
   id: number;
@@ -25,8 +26,10 @@ interface RecordItem {
   recession: number;
   mobility: string;
   notes: string;
-  surfaces: Record<string, boolean>;
+  surfaces: Record<string, boolean | string>;
 }
+
+interface OdontogramHistoryItem { id: number; tooth_number: number; snapshot: Record<string, unknown>; created_at: string }
 
 interface Note {
   id: number;
@@ -138,6 +141,11 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
   const [images, setImages] = useState<PatientImage[]>([]);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [dentition, setDentition] = useState<'adulto' | 'nino'>('adulto');
+  const [surfaceMode, setSurfaceMode] = useState<'patologia' | 'tratamiento'>('patologia');
+  const [isSavingTooth, setIsSavingTooth] = useState(false);
+  const [odontogramHistory, setOdontogramHistory] = useState<OdontogramHistoryItem[]>([]);
+  const [undoRecord, setUndoRecord] = useState<RecordItem | null>(null);
+  const [health, setHealth] = useState({ hygiene: '', periodontal: '', malocclusion: '', fluorosis: '' });
   const [note, setNote] = useState('');
   const [diagnosisSearch, setDiagnosisSearch] = useState('');
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<Array<{ cie10_code: string; description: string }>>([]);
@@ -159,7 +167,7 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
   useEffect(() => {
     async function load() {
       try {
-        const [historyData, recordsData, notesData, diagnosisData, prescriptionData, documentData, imageData, templatesRes] = await Promise.all([
+        const [historyData, recordsData, notesData, diagnosisData, prescriptionData, documentData, imageData, templatesRes, odontogramHistoryData, healthData] = await Promise.all([
           request<HistorySheet | null>('history-sheet').catch(() => null),
           request<RecordItem[]>('odontogram').catch(() => []),
           request<Note[]>('notes').catch(() => []),
@@ -171,6 +179,8 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
             if (!response.ok) return [] as DocumentTemplate[];
             return (await response.json()) as DocumentTemplate[];
           }),
+          request<OdontogramHistoryItem[]>('odontogram/history').catch(() => []),
+          request<typeof health>('health-assessment').catch(() => ({ hygiene: '', periodontal: '', malocclusion: '', fluorosis: '' })),
         ]);
 
         setSheet(historyData ?? emptyHistorySheet);
@@ -181,6 +191,8 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
         setDocuments(documentData);
         setImages(imageData);
         setDocumentTemplates(templatesRes);
+        setOdontogramHistory(odontogramHistoryData);
+        setHealth(healthData);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Error al cargar el expediente');
       }
@@ -206,6 +218,14 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
     notes: '',
     surfaces: {},
   };
+
+  const oralIndices = useMemo(() => {
+    const caries = records.filter((item) => item.condition === 'patologia' || Object.values(item.surfaces).includes('patologia')).length;
+    const absent = records.filter((item) => item.surfaces.tooth_status === 'ausente').length;
+    const treated = records.filter((item) => item.condition === 'tratamiento' || Object.values(item.surfaces).includes('tratamiento')).length;
+    const child = dentition === 'nino';
+    return { caries, absent, treated, total: caries + absent + treated, label: child ? 'ceo' : 'CPO' };
+  }, [dentition, records]);
 
   function setField<T extends keyof HistorySheet>(key: T, value: HistorySheet[T]) {
     setSheet((current) => ({ ...current, [key]: value }));
@@ -238,6 +258,8 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
 
   async function saveToothRecord() {
     if (selectedTooth === null) return;
+    setIsSavingTooth(true);
+    setError('');
     try {
       const saved = await request<RecordItem>('odontogram', {
         method: 'PUT',
@@ -251,11 +273,50 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
         ...current.filter((item) => item.tooth_number !== saved.tooth_number),
         saved,
       ]);
-      setMessage('Pieza dental guardada correctamente');
-      setError('');
+      setMessage(`Pieza ${selectedTooth} guardada correctamente`);
     } catch (saveError) {
+      console.error('Error guardando odontograma', saveError);
       setError(saveError instanceof Error ? saveError.message : 'No se pudo guardar la pieza');
-    }
+    } finally { setIsSavingTooth(false); }
+  }
+
+  async function saveHealthAssessment() {
+    try {
+      const saved = await request<typeof health>('health-assessment', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(health) });
+      setHealth(saved);
+      setMessage('Indicadores de salud bucal guardados');
+      setError('');
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : 'No se pudo guardar la evaluación bucal'); }
+  }
+
+  function updateSelectedTooth(update: Partial<RecordItem>) {
+    if (selectedTooth === null) return;
+    setUndoRecord(selectedRecord.id ? selectedRecord : null);
+    setRecords((current) => [
+      ...current.filter((item) => item.tooth_number !== selectedTooth),
+      { ...selectedRecord, ...update },
+    ]);
+  }
+
+  function clearSelectedTooth() {
+    if (selectedTooth === null || !window.confirm(`¿Limpiar todos los datos de la pieza ${selectedTooth}?`)) return;
+    updateSelectedTooth({ condition: 'sano', recession: 0, mobility: 'Sin movilidad', notes: '', surfaces: {} });
+  }
+
+  function undoToothChange() {
+    if (!undoRecord) return;
+    setRecords((current) => [...current.filter((item) => item.tooth_number !== undoRecord.tooth_number), undoRecord]);
+    setUndoRecord(null);
+  }
+
+  function toggleToothSurface(surface: ToothSurface) {
+    const currentValue = selectedRecord.surfaces[surface];
+    const nextValue = currentValue === surfaceMode ? false : surfaceMode;
+    updateSelectedTooth({ surfaces: { ...selectedRecord.surfaces, [surface]: nextValue } });
+  }
+
+  function setToothFinding(value: string) {
+    updateSelectedTooth({ surfaces: { ...selectedRecord.surfaces, finding: value } });
   }
 
   async function addNoteEntry(event: FormEvent) {
@@ -580,27 +641,34 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {toothSet.map((tooth) => {
-                const record = records.find((item) => item.tooth_number === tooth);
-                const klass =
-                  record?.condition === 'patologia'
-                    ? 'bg-rose-500 text-white border-rose-500'
-                    : record?.condition === 'tratamiento'
-                      ? 'bg-sky-500 text-white border-sky-500'
-                      : 'bg-white text-slate-700 border-slate-200';
-
-                return (
-                  <button
-                    type="button"
-                    key={tooth}
-                    onClick={() => setSelectedTooth(tooth)}
-                    className={`flex h-12 items-center justify-center rounded-lg border-2 text-xs font-black transition ${klass} ${selectedTooth === tooth ? 'ring-2 ring-teal-200' : ''}`}
-                  >
-                    {tooth}
-                  </button>
-                );
-              })}
+            <div className="space-y-6">
+              {[
+                { label: 'Arcada superior · cuadrantes 1 y 2', teeth: toothSet.slice(0, 16) },
+                { label: 'Arcada inferior · cuadrantes 4 y 3', teeth: toothSet.slice(16) },
+              ].map((arch) => (
+                <div key={arch.label}>
+                  <h4 className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">{arch.label}</h4>
+                  <div className="grid grid-cols-4 gap-1 sm:grid-cols-8 lg:grid-cols-8">
+                    {arch.teeth.map((tooth) => {
+                      const record = records.find((item) => item.tooth_number === tooth);
+                      const markValues = Object.values(record?.surfaces ?? {});
+                      const hasPathology = markValues.some((value) => value === 'patologia' || value === true) || record?.condition === 'patologia';
+                      const hasTreatment = markValues.some((value) => value === 'tratamiento') || record?.condition === 'tratamiento';
+                      return (
+                        <button
+                          type="button"
+                          key={tooth}
+                          title={`Pieza ${tooth}${hasPathology ? ' · Patología' : hasTreatment ? ' · Tratamiento' : ''}`}
+                          onClick={() => setSelectedTooth(tooth)}
+                          className={`rounded-xl border p-1 transition hover:-translate-y-0.5 hover:shadow-md ${selectedTooth === tooth ? 'ring-2 ring-teal-300' : 'border-slate-200'} ${hasPathology ? 'bg-rose-50' : hasTreatment ? 'bg-sky-50' : 'bg-slate-50'}`}
+                        >
+                          <DentalToothSvg toothNumber={tooth} surfaces={record?.surfaces ?? {}} compact />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </Panel>
 
@@ -609,6 +677,54 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
               <p className="text-sm text-slate-500">Selecciona una pieza del odontograma para registrar su estado clínico.</p>
             ) : (
               <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <DentalToothSvg
+                    toothNumber={selectedTooth}
+                    surfaces={selectedRecord.surfaces}
+                    onSurfaceClick={toggleToothSurface}
+                  />
+                  <p className="text-center text-[11px] text-slate-500">Mesial · distal · vestibular · lingual/palatina · oclusal/incisal</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-2">
+                  <button type="button" onClick={() => setSurfaceMode('patologia')} className={`rounded-lg px-2 py-2 text-xs font-bold ${surfaceMode === 'patologia' ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-700'}`}>
+                    Patología pendiente
+                  </button>
+                  <button type="button" onClick={() => setSurfaceMode('tratamiento')} className={`rounded-lg px-2 py-2 text-xs font-bold ${surfaceMode === 'tratamiento' ? 'bg-sky-500 text-white' : 'bg-sky-50 text-sky-700'}`}>
+                    Tratamiento realizado
+                  </button>
+                </div>
+
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">Selecciona un modo y pulsa una superficie para marcarla. Pulsa de nuevo para quitar la marca.</p>
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-600">
+                    <span>Tipo anatómico</span>
+                    <span className="capitalize text-teal-700">{toothKind(selectedTooth)}</span>
+                  </div>
+                  <label className="block text-xs font-bold text-slate-600">
+                    Hallazgo o tratamiento
+                    <select value={String(selectedRecord.surfaces.finding ?? '')} onChange={(event) => setToothFinding(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      <option value="">Sin hallazgo específico</option>
+                      <optgroup label="Patologías / pendientes">
+                        <option value="Caries profunda">Caries profunda</option>
+                        <option value="Fractura">Fractura</option>
+                        <option value="Desgaste">Desgaste</option>
+                        <option value="Extracción indicada">Extracción indicada</option>
+                        <option value="Restos radiculares">Restos radiculares</option>
+                        <option value="Diente ausente">Diente ausente</option>
+                      </optgroup>
+                      <optgroup label="Tratamientos realizados">
+                        <option value="Obturación">Obturación</option>
+                        <option value="Endodoncia">Endodoncia</option>
+                        <option value="Sellante">Sellante</option>
+                        <option value="Corona">Corona</option>
+                        <option value="Prótesis fija">Prótesis fija</option>
+                        <option value="Prótesis removible">Prótesis removible</option>
+                        <option value="Prótesis total">Prótesis total</option>
+                      </optgroup>
+                    </select>
+                  </label>
+                </div>
                 <label className="block text-xs font-bold text-slate-600">
                   Estado
                   <select
@@ -663,11 +779,53 @@ export default function ClinicalHistoryModule({ patient, onBack }: { patient: Pa
                   ]);
                 }} />
 
-                <button type="button" onClick={() => void saveToothRecord()} className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white">
-                  Guardar pieza
+                <button type="button" disabled={isSavingTooth} onClick={() => void saveToothRecord()} className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60">
+                  {isSavingTooth ? 'Guardando odontograma...' : 'Guardar Odontograma'}
                 </button>
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={clearSelectedTooth} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-2 text-xs font-bold text-rose-700">Limpiar</button>
+                  <button type="button" onClick={undoToothChange} disabled={!undoRecord} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-bold text-slate-600 disabled:opacity-40">Deshacer</button>
+                  <button type="button" onClick={() => window.print()} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-bold text-slate-600">Exportar PDF</button>
+                </div>
+                <label className="block text-xs font-bold text-slate-600">
+                  Estado especial de la pieza
+                  <select value={String(selectedRecord.surfaces.tooth_status ?? '')} onChange={(event) => updateSelectedTooth({ surfaces: { ...selectedRecord.surfaces, tooth_status: event.target.value } })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                    <option value="">Pieza presente</option>
+                    <option value="ausente">Ausente</option>
+                    <option value="extraccion">Extracción indicada</option>
+                  </select>
+                </label>
               </div>
             )}
+          </Panel>
+        </div>
+      )}
+
+      {tab === 'odontograma' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Panel title={`Índices ${oralIndices.label}`}>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-xl bg-rose-50 p-3"><strong className="block text-2xl text-rose-700">{oralIndices.caries}</strong><span className="text-xs text-slate-500">Caries</span></div>
+              <div className="rounded-xl bg-slate-100 p-3"><strong className="block text-2xl text-slate-700">{oralIndices.absent}</strong><span className="text-xs text-slate-500">Ausentes</span></div>
+              <div className="rounded-xl bg-sky-50 p-3"><strong className="block text-2xl text-sky-700">{oralIndices.treated}</strong><span className="text-xs text-slate-500">Obturados</span></div>
+            </div>
+            <p className="mt-3 text-center text-sm font-bold text-slate-700">Índice total: {oralIndices.total}</p>
+          </Panel>
+          <Panel title="Indicadores de salud bucal">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(['hygiene', 'periodontal', 'malocclusion', 'fluorosis'] as const).map((key) => (
+                <label key={key} className="text-xs font-bold capitalize text-slate-600">
+                  {key === 'hygiene' ? 'Higiene oral' : key === 'periodontal' ? 'Enfermedad periodontal' : key === 'malocclusion' ? 'Maloclusión' : 'Fluorosis'}
+                  <select value={health[key]} onChange={(event) => setHealth((current) => ({ ...current, [key]: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                    <option value="">Sin valorar</option><option value="normal">Normal</option><option value="leve">Leve</option><option value="moderada">Moderada</option><option value="severa">Severa</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+            <button type="button" onClick={() => void saveHealthAssessment()} className="mt-4 w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white">Guardar indicadores</button>
+          </Panel>
+          <Panel title="Historial de cambios">
+            {odontogramHistory.length === 0 ? <p className="text-sm text-slate-500">Aún no hay cambios guardados.</p> : <div className="space-y-2">{odontogramHistory.slice(0, 8).map((item) => <div key={item.id} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"><span>Pieza {item.tooth_number}</span><span>{new Date(item.created_at).toLocaleString('es-ES')}</span></div>)}</div>}
           </Panel>
         </div>
       )}

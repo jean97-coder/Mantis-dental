@@ -12,6 +12,8 @@ import patientRoutes from './routes/patientRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import templateRoutes from './routes/templateRoutes.js';
 import whatsappRoutes from './routes/whatsappRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import { requireAuth } from './middleware/auth.js';
 
 const app = express();
 
@@ -36,6 +38,7 @@ app.get('/api/health', async (_request, response) => {
   }
 });
 
+app.use(['/api/patients', '/api/appointments', '/api/budgets', '/api/clinical-records', '/api/colleagues', '/api/inventory', '/api/medical-records', '/api/reports', '/api/templates'], requireAuth);
 app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/budgets', budgetRoutes);
@@ -51,6 +54,7 @@ app.use('/api/whatsapp', (req, _res, next) => {
   console.log("🚨 ¡LLEGÓ ALGO A WHATSAPP ROUTE!", req.method, req.path, JSON.stringify(req.body));
   next();
 }, whatsappRoutes);
+app.use('/api/auth', authRoutes);
 
 // Usamos la variable de entorno PORT del archivo .env, o el puerto 4001 por defecto
 const PORT = process.env.PORT || 4001;

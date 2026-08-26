@@ -6,6 +6,7 @@ import { pool } from '../config/db.js';
 type PatientParams = { patientId: string };
 type IdParams = { id: string };
 type PatientImageParams = { patientId: string; imageId: string };
+type HealthAssessment = { hygiene?: string; periodontal?: string; malocclusion?: string; fluorosis?: string };
 
 async function getPatientId(request: Request<PatientParams>): Promise<number> {
   return Number(request.params.patientId);
@@ -43,7 +44,32 @@ export async function saveHistorySheet(request: Request<PatientParams>, response
   catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo guardar la ficha clínica' }); }
 }
 export async function getOdontogram(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('SELECT * FROM odontogram_records WHERE patient_id=$1 ORDER BY tooth_number', [await getPatientId(request)]); response.json(result.rows); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo cargar el odontograma' }); } }
-export async function saveOdontogram(request: Request<PatientParams>, response: Response): Promise<void> { try { const { tooth_number, surfaces = {}, recession = 0, mobility = 'Sin movilidad', condition = 'sano', notes = '' } = request.body; const result = await pool.query(`INSERT INTO odontogram_records (patient_id,tooth_number,surfaces,recession,mobility,condition,notes) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (patient_id,tooth_number) DO UPDATE SET surfaces=$3,recession=$4,mobility=$5,condition=$6,notes=$7,updated_at=NOW() RETURNING *`, [await getPatientId(request), tooth_number, surfaces, recession, mobility, condition, notes]); response.json(result.rows[0]); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo guardar la pieza dental' }); } }
+export async function saveOdontogram(request: Request<PatientParams>, response: Response): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const patientId = Number(request.params.patientId);
+    const toothNumber = Number(request.body.tooth_number);
+    const { surfaces = {}, recession = 0, mobility = 'Sin movilidad', condition = 'sano', notes = '' } = request.body;
+    if (!Number.isInteger(patientId) || patientId <= 0 || !Number.isInteger(toothNumber) || toothNumber <= 0 || typeof surfaces !== 'object' || surfaces === null) {
+      response.status(400).json({ error: 'Paciente, número FDI y superficies válidas son obligatorios' });
+      return;
+    }
+    const surfacesJson = JSON.stringify(surfaces);
+    const snapshotJson = JSON.stringify({ surfaces, recession, mobility, condition, notes });
+    await client.query('BEGIN');
+    const result = await client.query(`INSERT INTO odontogram_records (patient_id,tooth_number,surfaces,recession,mobility,condition,notes) VALUES ($1,$2,$3::jsonb,$4,$5,$6,$7) ON CONFLICT (patient_id,tooth_number) DO UPDATE SET surfaces=$3::jsonb,recession=$4,mobility=$5,condition=$6,notes=$7,updated_at=NOW() RETURNING *`, [patientId, toothNumber, surfacesJson, Number(recession) || 0, String(mobility), String(condition), String(notes)]);
+    await client.query('INSERT INTO odontogram_history (patient_id,tooth_number,snapshot) VALUES ($1,$2,$3::jsonb)', [patientId, toothNumber, snapshotJson]);
+    await client.query('COMMIT');
+    response.status(200).json(result.rows[0]);
+  } catch (error: unknown) {
+    await client.query('ROLLBACK');
+    console.error('Error saving odontogram record', error);
+    response.status(500).json({ error: error instanceof Error ? error.message : 'No se pudo guardar la pieza dental' });
+  } finally { client.release(); }
+}
+export async function getOdontogramHistory(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('SELECT * FROM odontogram_history WHERE patient_id=$1 ORDER BY created_at DESC LIMIT 30', [await getPatientId(request)]); response.json(result.rows); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo cargar el historial del odontograma' }); } }
+export async function getHealthAssessment(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('SELECT hygiene, periodontal, malocclusion, fluorosis FROM oral_health_assessments WHERE patient_id=$1', [await getPatientId(request)]); response.json(result.rows[0] ?? { hygiene: '', periodontal: '', malocclusion: '', fluorosis: '' }); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo cargar la evaluación bucal' }); } }
+export async function saveHealthAssessment(request: Request<PatientParams>, response: Response): Promise<void> { try { const { hygiene = '', periodontal = '', malocclusion = '', fluorosis = '' } = request.body as HealthAssessment; const result = await pool.query(`INSERT INTO oral_health_assessments (patient_id,hygiene,periodontal,malocclusion,fluorosis) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (patient_id) DO UPDATE SET hygiene=$2,periodontal=$3,malocclusion=$4,fluorosis=$5,updated_at=NOW() RETURNING *`, [await getPatientId(request), hygiene, periodontal, malocclusion, fluorosis]); response.json(result.rows[0]); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo guardar la evaluación bucal' }); } }
 export async function getNotes(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('SELECT * FROM medical_notes WHERE patient_id=$1 ORDER BY created_at DESC', [await getPatientId(request)]); response.json(result.rows); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudieron cargar las notas' }); } }
 export async function createNote(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('INSERT INTO medical_notes (patient_id,note) VALUES ($1,$2) RETURNING *', [await getPatientId(request), request.body.note]); response.status(201).json(result.rows[0]); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudo guardar la nota' }); } }
 export async function getDiagnoses(request: Request<PatientParams>, response: Response): Promise<void> { try { const result = await pool.query('SELECT * FROM diagnoses WHERE patient_id=$1 ORDER BY created_at DESC', [await getPatientId(request)]); response.json(result.rows); } catch (error) { console.error(error); response.status(500).json({ error: 'No se pudieron cargar los diagnósticos' }); } }
