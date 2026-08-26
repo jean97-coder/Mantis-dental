@@ -4,23 +4,32 @@ import type { PoolClient } from 'pg';
 
 const { Pool } = pg;
 
-// Configuración adaptada para la nube forzando explícitamente IPv4
-export const pool = new Pool(
-  (process.env.DATABASE_URL
-    ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-        family: 4, // Fuerza IPv4 a nivel de socket
-      }
-    : {
-        user: process.env.DB_USER,
-        host: process.env.DB_HOST,
-        database: process.env.DB_NAME,
-        password: process.env.DB_PASSWORD,
-        port: Number(process.env.DB_PORT ?? 5432),
-        family: 4,
-      }) as any
-);
+// Parseamos la URL de Supabase de manera segura para extraer sus credenciales exactas
+let poolConfig: any;
+
+if (process.env.DATABASE_URL) {
+  const url = new URL(process.env.DATABASE_URL);
+  poolConfig = {
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    host: url.hostname,
+    database: url.pathname.slice(1),
+    port: Number(url.port || 5432),
+    ssl: { rejectUnauthorized: false },
+    family: 4, // Fuerza estrictamente tráfico IPv4
+  };
+} else {
+  poolConfig = {
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: Number(process.env.DB_PORT ?? 5432),
+    family: 4,
+  };
+}
+
+export const pool = new Pool(poolConfig);
 
 const defaultDocumentTemplates = [
   {
