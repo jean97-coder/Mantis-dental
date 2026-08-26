@@ -4,15 +4,11 @@ import type { PoolClient } from 'pg';
 
 const { Pool } = pg;
 
-// Usamos la IP directa de IPv4 para evitar el fallo de red IPv6 (ENETUNREACH) en Render
+// Conexión estándar segura compatible con la nube usando la URL de entorno
 export const pool = new Pool({
-  user: 'postgres',
-  password: 'Pierre301297*Jean',
-  host: '54.213.19.167',
-  database: 'postgres',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  family: 4,
+  family: 4, // Fuerza sockets IPv4 manteniendo la resolución del dominio de Supabase
 } as any);
 
 const defaultDocumentTemplates = [
